@@ -4,6 +4,7 @@ import logging as lg
 
 import geopandas as gpd
 import networkx as nx
+import numpy as np
 from shapely.geometry import LineString
 from shapely.geometry import MultiPolygon
 from shapely.geometry import Point
@@ -210,7 +211,11 @@ def _remove_rings(G):
     return G
 
 
-def simplify_graph(G, strict=True, remove_rings=True, track_merged=False):
+def _lane_agg(lst):
+    return str(np.nanmedian([float(it) for it in lst]).astype(int))
+
+
+def simplify_graph(G, strict=True, remove_rings=True, track_merged=False, link_attr_agg=None):
     """
     Simplify a graph's topology by removing interstitial nodes.
 
@@ -238,6 +243,8 @@ def simplify_graph(G, strict=True, remove_rings=True, track_merged=False):
     track_merged : bool
         if True, add `merged_edges` attribute on simplified edges, containing
         a list of all the (u, v) node pairs that were merged together
+    link_attr_agg : Optional[dict]
+        blah
 
     Returns
     -------
@@ -245,6 +252,9 @@ def simplify_graph(G, strict=True, remove_rings=True, track_merged=False):
         topologically simplified graph, with a new `geometry` attribute on
         each simplified edge
     """
+    if link_attr_agg is None:
+        link_attr_agg = {"length": sum, "travel_time": sum}
+
     if "simplified" in G.graph and G.graph["simplified"]:  # pragma: no cover
         msg = "This graph has already been simplified, cannot simplify it again."
         raise GraphSimplificationError(msg)
@@ -297,9 +307,12 @@ def simplify_graph(G, strict=True, remove_rings=True, track_merged=False):
 
         # consolidate the path's edge segments' attribute values
         for attr in path_attributes:
-            if attr in attrs_to_sum:
-                # if this attribute must be summed, sum it now
-                path_attributes[attr] = sum(path_attributes[attr])
+            if attr in link_attr_agg:
+                # if this attribute must be aggregate it, aggregate it now
+                agg = link_attr_agg[attr]
+                if agg == "strmedian":
+                    agg = _lane_agg
+                path_attributes[attr] = agg(path_attributes[attr])
             elif len(set(path_attributes[attr])) == 1:
                 # if there's only 1 unique value in this attribute list,
                 # consolidate it to the single value (the zero-th):
