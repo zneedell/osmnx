@@ -212,7 +212,7 @@ def _remove_rings(G):
 
 
 def _lane_agg(lst):
-    return str(np.nanmedian([float(it) for it in lst]))
+    return str(np.nanmedian([float(it) for it in lst]).astype(int))
 
 
 def simplify_graph(G, strict=True, remove_rings=True, track_merged=False, link_attr_agg=None):
