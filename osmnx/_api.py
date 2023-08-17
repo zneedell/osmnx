@@ -2,6 +2,8 @@
 
 from .bearing import add_edge_bearings
 from .bearing import orientation_entropy
+from .capacity import add_edge_lanes
+from .capacity import add_edge_capacities
 from .distance import k_shortest_paths
 from .distance import nearest_edges
 from .distance import nearest_nodes
