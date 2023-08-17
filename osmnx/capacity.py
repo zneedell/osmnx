@@ -124,7 +124,7 @@ def add_edge_lanes(G, hwy_lanes=None, fallback=None, precision=None, agg=np.nanm
 
     # add speed kph attribute to graph edges
     edges["lanes"] = lanes_numeric.round(precision).values
-    nx.set_edge_attributes(G, values=edges["lanes"], name="lanes")
+    nx.set_edge_attributes(G, values=edges["lanes"].astype(int), name="lanes")
 
     return G
 
