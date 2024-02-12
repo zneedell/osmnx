@@ -36,6 +36,4 @@ ec3 = ox.plot.get_edge_colors_by_attr(g3, attr="lanes", cmap="spring")
 fig3, ax3 = ox.plot_graph(g3, node_color='black', edge_linewidth=2.5, bgcolor='white', edge_color=ec3)
 
 
-
-
 print('done')

@@ -178,4 +178,8 @@ useful_tags_way = [
     "width",
     "est_width",
     "junction",
+    "hgv",
+    "maxweight:hgv",
+    "maxweight",
+    "maxlength"
 ]
