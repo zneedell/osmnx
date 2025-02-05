@@ -31,9 +31,35 @@ places = [
     {"county": "Snohomish", "state": "Washington"}
 ]
 
-G_big = ox.graph_from_place(places, network_type="drive", simplify=False, custom_filter=cf, retain_all=True)
+boundary = ox.geocode_to_gdf(places)
+convex_hull = boundary.dissolve().to_crs("epsg:26910").buffer(5000).to_crs("epsg:4326").geometry[0]
+
+
+
+G_big = ox.graph_from_polygon(convex_hull, network_type="drive", simplify=False, custom_filter=cf, retain_all=True)
+
+convex_hull = boundary.dissolve().to_crs("epsg:26910").buffer(30000).to_crs("epsg:4326").geometry[0]
+
+G_ferry = ox.graph_from_polygon(convex_hull, network_type="all", simplify=True, custom_filter='["route"="ferry"]["motor_vehicle"="yes"]', retain_all=True)
+G_all_ferry = ox.graph_from_polygon(convex_hull, network_type="all", simplify=True, custom_filter='["route"="ferry"]["motorcar"="yes"]', retain_all=True)
+G_ferry = nx.compose_all([G_ferry, G_all_ferry])
+G_highway = ox.graph_from_polygon(convex_hull, network_type="drive", simplify=False, custom_filter='["highway"~"motorway|primary|motorway_link|primary_link|trunk|trunk_link"]', retain_all=True)
+
+G_big = nx.compose_all([G_big, G_highway])
 
 nodes, edges = ox.graph_to_gdfs(G_big)
+ferrynodes, ferryedges = ox.graph_to_gdfs(G_ferry)
+
+ferryedges['reversed'] = False
+ferryedges['maxspeed'] = "10 mph"
+ferryedges['highway'] = "unclassified"
+ferryedges['oneway'] = "no"
+ferryedges['lanes'] = "2"
+for col in edges.columns:
+    if col not in ferryedges.columns:
+        ferryedges[col] = "nan"
+ferryedges["hgv"] = False
+ferryedges["mdv"] = True
 
 edges.loc[~edges["maxweight:hgv"].isna(), "maxweight"] = edges.loc[
     ~edges["maxweight:hgv"].isna(), "maxweight:hgv"].copy()
@@ -54,6 +80,10 @@ edges["mdv"] = mdv.copy()
 G_big_reconstructed = ox.graph_from_gdfs(nodes, edges)
 
 simplify = True
+
+G_ferry_reconstructed = ox.graph_from_gdfs(ferrynodes, ferryedges)
+
+G_big = nx.compose_all([G_big_reconstructed, G_ferry_reconstructed])
 
 if simplify:
     G2_big = ox.simplification.simplify_graph(G_big, strict=False,
@@ -80,9 +110,9 @@ G2_big_l_unproj_sm = ox.utils_graph.get_largest_component(G2_big_l_unproj)
 #                   edge_tag_aggs=[('length', 'sum')])
 
 ox.save_graph_xml(G2_big_l_unproj_sm, merge_edges=False,
-                  filepath="seattle-residential-partiallysimplified.osm",
+                  filepath="seattle-residential-partiallysimplified-ferry-buffer5.osm",
                   edge_tags=['highway', 'lanes', 'maxspeed', 'name', 'oneway', 'length', 'tunnel', 'bridge', 'osmid'],
                   edge_tag_aggs=[('length', 'sum')])
 
 print("stop")
-# osmium cat seattle-residential-partiallysimplified.osm -o seattle-residential-partiallysimplified.osm.pbf
+# osmium cat seattle-residential-partiallysimplified-ferry.osm -o seattle-residential-partiallysimplified-ferry.osm.pbf
